@@ -1,0 +1,448 @@
+
+# coding: utf-8
+
+# In[1]:
+
+
+import pandas as pd
+ratings = pd.read_excel('/Users/yaningcui/Desktop/syde675_project/SCUT-FBP5500_v2/All_Ratings.xlsx')
+
+filenames = ratings.groupby('Filename').size().index.tolist()
+
+labels = []
+
+for filename in filenames:
+    df = ratings[ratings['Filename'] == filename]
+    score = round(df['Rating'].mean(), 2)
+    labels.append({'Filename': filename, 'score': score})
+
+labels_df = pd.DataFrame(labels)
+
+
+# In[2]:
+
+
+# print(labels_df.shape)
+
+
+# In[3]:
+
+
+labels_df.head()
+
+
+# In[4]:
+
+
+# labels_df.columns[1]
+# labels_df.groupby(labels_df.columns[1]).count()
+
+
+# In[162]:
+
+
+labels_df['scoreLevel'] = '' 
+
+def scoreLevel(traindf):
+    if traindf['score'] >= 1 and traindf['score'] < 1.5:
+        return 0
+    elif traindf['score'] >= 1.5 and traindf['score'] < 2.5:
+        return 1
+    elif traindf['score'] >= 2.5 and traindf['score'] < 3.5:
+        return 2
+    elif traindf['score'] >= 3.5 and traindf['score'] < 4.5:
+        return 3
+    else:
+        return 4
+
+labels_df['scoreLevel'] = labels_df.apply(lambda r: scoreLevel(r), axis=1)
+
+
+# In[163]:
+
+
+labels_df.columns[2]
+labels_df.groupby(labels_df.columns[2]).count()
+
+
+# In[204]:
+
+
+import matplotlib.pyplot as plt
+
+# lv1 = [x for x in labels_df['score'] if x<1]
+lv1 = [x for x in labels_df['score'] if x>=1 and x<1.5]
+lv2 = [x for x in labels_df['score'] if x>=1.5 and x<2]
+lv3 = [x for x in labels_df['score'] if x>=2 and x<2.5]
+lv4 = [x for x in labels_df['score'] if x>=2.5 and x<3]
+lv5 = [x for x in labels_df['score'] if x>=3 and x<3.5]
+lv6 = [x for x in labels_df['score'] if x>=3.5 and x<4]
+lv7 = [x for x in labels_df['score'] if x>=4 and x<4.5]
+lv8 = [x for x in labels_df['score'] if x>=4.5]
+plt.bar(['lv1','lv2','lv3','lv4','lv5','lv6','lv7','lv8'],
+       [len(x) for x in [lv1,lv2,lv3,lv4,lv5,lv6,lv7,lv8]])
+plt.show
+
+
+# In[205]:
+
+
+# lv1 = [x for x in labels_df['score'] if x<1]
+lv1 = [x for x in labels_df['score'] if x>=1 and x<1.5]
+lv2 = [x for x in labels_df['score'] if x>=1.5 and x<2.5]
+lv3 = [x for x in labels_df['score'] if x>=2.5 and x<3.5]
+lv4 = [x for x in labels_df['score'] if x>=3.5 and x<4.5]
+lv5 = [x for x in labels_df['score'] if x>=4.5 and x<=5]
+plt.bar(['lv1','lv2','lv3','lv4','lv5'],
+       [len(x) for x in [lv1,lv2,lv3,lv4,lv5]])
+plt.savefig('5c_distribution.png')
+plt.show
+
+
+# In[206]:
+
+
+# lv1 = [x for x in labels_df['score'] if x<1]
+lv1 = [x for x in labels_df['score'] if x>=1 and x<2.5]
+lv2 = [x for x in labels_df['score'] if x>=2.5 and x<3.5]
+lv3 = [x for x in labels_df['score'] if x>=3.5 and x<=5]
+plt.bar(['lv1','lv2','lv3'],
+       [len(x) for x in [lv1,lv2,lv3]])
+plt.savefig('3c_distribution.png')
+
+plt.show
+
+
+# In[12]:
+
+
+import os
+import numpy as np
+from keras.preprocessing.image import load_img
+from keras.preprocessing.image import img_to_array
+import PIL.Image as Image
+from sklearn.model_selection import train_test_split
+
+
+sample_dir = '/Users/yaningcui/Desktop/syde675_project/SCUT-FBP5500_v2/Images'
+nb_samples = len(os.listdir(sample_dir))
+
+x_total = np.empty((nb_samples, 367500), dtype=np.float32)
+
+y_total = np.empty((nb_samples), dtype=np.int)
+y_total_c = np.empty((nb_samples))
+
+for i, fn in enumerate(os.listdir(sample_dir)):
+    image = load_img('%s/%s' % (sample_dir, fn))
+    r, g, b = image.split()
+    r_arr = np.array(r).reshape(122500)
+    g_arr = np.array(g).reshape(122500)
+    b_arr = np.array(b).reshape(122500)
+    x = np.concatenate((r_arr, g_arr, b_arr))
+    x = x.astype('float32') / 255.
+    x_total[i] = x
+    
+    y = labels_df[labels_df.Filename == fn].scoreLevel.values
+    y_total[i] = y
+    
+    z = labels_df[labels_df.Filename == fn].score.values
+    y_total_c[i] = z
+
+
+# In[13]:
+
+
+print(x_total.shape)
+
+
+# In[14]:
+
+
+print(y_total.shape)
+print(y_total_c.shape)
+
+
+# In[16]:
+
+
+np.unique(y_total_c)
+
+
+# In[164]:
+
+
+y_total_5class = np.empty((nb_samples), dtype=np.int)
+for i, fn in enumerate(os.listdir(sample_dir)):
+    j = labels_df[labels_df.Filename == fn].scoreLevel.values
+    y_total_5class[i] = j
+
+
+# In[165]:
+
+
+np.unique(y_total_5class)
+
+
+# In[17]:
+
+
+get_ipython().run_cell_magic('time', '', 'from sklearn.decomposition import PCA\npca = PCA(n_components=0.95)\npca.fit(x_total)')
+
+
+# In[18]:
+
+
+get_ipython().run_cell_magic('time', '', 'reduced_x_total = pca.fit_transform(x_total)')
+
+
+# In[19]:
+
+
+print(reduced_x_total.shape)
+
+
+# # Classification
+
+# 64% 3520 train; 16% 880 valid; 20% 1100 test
+
+# In[168]:
+
+
+x_train_all, x_test, y_train_all, y_test = train_test_split(reduced_x_total, y_total_5class, test_size=0.2, random_state=42)
+x_train, x_val, y_train, y_val = train_test_split(x_train_all, y_train_all, test_size=0.2, random_state=42)
+
+
+# In[169]:
+
+
+print(x_train.shape)
+print(y_train.shape)
+print(x_test.shape)
+print(y_test.shape)
+print(x_val.shape)
+print(y_val.shape)
+
+
+# In[170]:
+
+
+np.unique(y_train)
+
+
+# In[171]:
+
+
+np.unique(y_test)
+
+
+# In[172]:
+
+
+np.unique(y_val)
+
+
+# In[191]:
+
+
+from sklearn import svm
+from sklearn.svm import SVR
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn import linear_model
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+
+
+X = x_train
+Y = y_train
+
+# clf = linear_model.LogisticRegression(C=1e5)
+clf = svm.LinearSVC()
+# clf = GaussianNB()
+
+# clf = KNeighborsClassifier(n_neighbors=10)
+
+clf.fit(X, Y)
+
+
+# In[192]:
+
+
+re = clf.predict(x_test)
+
+
+# In[193]:
+
+
+clf.score(x_test,y_test)
+
+
+# In[194]:
+
+
+result = pd.DataFrame(re)
+result.rename(columns={ result.columns[0]: "class" }, inplace=True)
+
+
+# In[195]:
+
+
+print(result.shape)
+
+
+# In[196]:
+
+
+true_lable = y_test
+pred_label = result
+
+from sklearn.metrics import f1_score
+f1_score(true_lable, pred_label, average = "macro")
+
+
+# In[197]:
+
+
+# compute confusion matrix
+from sklearn.metrics import confusion_matrix
+import itertools
+from matplotlib import pyplot as plt
+
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+ 
+    print(cm)
+ 
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+ 
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+ 
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig('confusion_matrix_SVM_5class',dpi=200)
+    plt.show()
+
+
+# In[198]:
+
+
+cnf_matrix = confusion_matrix(true_lable, pred_label, labels=[0,1,2,3,4])
+class_names = ['0', '1', '2','3','4']
+
+
+# In[199]:
+
+
+plt.figure()
+plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=False,
+                      title='Normalized confusion matrix')
+
+
+# # Regression
+
+# In[62]:
+
+
+x_train_all_c, x_test_c, y_train_all_c, y_test_c = train_test_split(reduced_x_total, y_total_c, test_size=0.2, random_state=42)
+x_train_c, x_val_c, y_train_c, y_val_c = train_test_split(x_train_all_c, y_train_all_c, test_size=0.2, random_state=42)
+
+
+# In[63]:
+
+
+print(x_train_c.shape)
+print(y_train_c.shape)
+print(x_test_c.shape)
+print(y_test_c.shape)
+print(x_val_c.shape)
+print(y_val_c.shape)
+
+
+# In[155]:
+
+
+from sklearn.linear_model import LinearRegression
+from sklearn.svm import SVR
+from sklearn import neighbors
+from sklearn.metrics import mean_squared_error, r2_score
+
+
+# In[127]:
+
+
+print(type(Y[1]))
+
+
+# In[156]:
+
+
+X = x_train_c
+Y = y_train_c
+
+# clf = LinearRegression()
+# clf = SVR(kernel='linear')
+clf = neighbors.KNeighborsRegressor()
+clf.fit(X, Y)
+
+
+# In[157]:
+
+
+pre = clf.predict(x_test_c)
+
+
+# In[158]:
+
+
+print(pre)
+
+
+# In[159]:
+
+
+print("Mean squared error: %.2f" % mean_squared_error(y_test_c, pre))
+
+
+# In[160]:
+
+
+print('Variance score: %.2f' % r2_score(y_test_c, pre))
+
+
+# In[161]:
+
+
+plt.scatter(y_test_c, pre,  color='purple')
+plt.plot(y_test_c, y_test_c, 'ro')
+ 
+# plt.title('')
+plt.xlabel('True label ')
+plt.ylabel('Predicted label')
+# plt.xticks(())
+# plt.yticks(())
+
+plt.savefig('knn_regression_perfromance.png')
+plt.show()
+
